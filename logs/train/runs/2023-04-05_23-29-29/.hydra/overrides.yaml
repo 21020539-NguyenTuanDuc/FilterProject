@@ -1,9 +1,0 @@
-- trainer=gpu
-- data.num_workers=10
-- data.pin_memory=true
-- trainer.devices=1
-- +trainer.strategy=ddp
-- model.net.model_name=resnet50
-- logger=wandb
-- trainer.max_epochs=3
-- callbacks=default

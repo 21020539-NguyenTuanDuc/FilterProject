@@ -1,2 +1,0 @@
-- trainer.max_epochs=20
-- model.optimizer.lr=1e-4

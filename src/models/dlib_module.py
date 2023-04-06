@@ -5,6 +5,11 @@ from pytorch_lightning import LightningModule
 from torchmetrics import MinMetric, MeanMetric
 from torchmetrics.regression.mae import MeanAbsoluteError
 
+from src.data.dlib_datamodule import TransformDataset
+
+import torchvision
+import wandb
+
 
 class DlibLitModule(LightningModule):
     """Example of LightningModule for MNIST classification.
@@ -100,7 +105,13 @@ class DlibLitModule(LightningModule):
     def validation_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
 
-        # update and log metrics
+        bx, by = batch
+        loss, preds, targets = self.model_step(batch)
+        annotated_batch = TransformDataset.annotate_tensor(bx, preds)
+        path = self.output_path + f"batch{batch_idx}.png"
+        torchvision.utils.save_image(annotated_batch, path)
+        wandb_image = wandb.Image(annotated_batch)
+        self.logger.experiment.log({"val/image": wandb_image})
         self.val_loss(loss)
         self.val_mae(preds, targets)
         self.log("val/loss", self.val_loss, on_step=False,
