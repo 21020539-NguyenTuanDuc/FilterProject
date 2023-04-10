@@ -5,13 +5,14 @@ import pyrootutils
 from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.loggers import Logger
-from PIL import Image
+from PIL import Image, ImageDraw
 import torch
 import albumentations as A
 from albumentations import Compose
 from albumentations.pytorch.transforms import ToTensorV2
 import torchvision
 import numpy as np
+from src.data.dlib_datamodule import DlibDataset
 
 import torchvision
 
@@ -86,6 +87,7 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     # for predictions use trainer.predict(...)
     log.info("Starting predictions!")
 
+    # annotated_image = eval_image(model=model, image_path='testImage/test.png')
     annotated_image = eval_image(model=model, image_path='testImage/test.png')
     torchvision.utils.save_image(annotated_image, "testImage/test_predict.png")
     return metric_dict, object_dict
@@ -116,8 +118,11 @@ def eval_image(image_path, model):
             box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
             (startX, startY, endX, endY) = box.astype("int")
             # cv2.rectangle(imgBB, (startX, startY), (endX, endY), (0, 0, 255), 2)
+            break
 
     imgBB = imgBB[startY-5:endY+5, startX-5:endX+5] # crop image
+    bb_h = endY - startY + 10
+    bb_w = endX - startX + 10
     # cv2.imshow("Output", imgBB) #To run in Google Colab, comment out this line Colab notebook
     # #cv2_imshow(image) #To run in Google Colab, uncomment this line
     # cv2.waitKey(0)
@@ -128,16 +133,41 @@ def eval_image(image_path, model):
         A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ToTensorV2(),
     ])
+    transformB = Compose([
+        ToTensorV2(),])
     input_image = Image.fromarray(color_converted_img)
     input_image = np.asarray(input_image)
-    print(input_image.shape)
+    origin_input_tensor = transformB(image=np.array(Image.open(image_path).convert('RGB')))
+    origin_input_tensor = origin_input_tensor["image"].unsqueeze(0)
     input_tensor = transform(image=input_image)
     input_tensor = input_tensor['image'].unsqueeze(0)
     with torch.no_grad():
         output_tensor = model(input_tensor)
     print(input_tensor.shape, output_tensor.shape) #1 3 224 224, 1 68 2
-    annotated_image = TransformDataset.annotate_tensor(input_tensor, output_tensor)
+    annotated_image = annotate_original_tensor(origin_input_tensor, output_tensor, startX, startY, bb_w, bb_h)
+    # annotated_image = TransformDataset.annotate_tensor(input_tensor, output_tensor)
     return annotated_image
 
+def annotate_original_tensor(image: torch.Tensor, landmarks: np.ndarray, startX: int, startY: int, bb_w, bb_h) -> Image:
+    transform_to_img = torchvision.transforms.ToPILImage()
+    images = image
+    images_to_save = []
+    for lm, img in zip(landmarks, images):
+        new_img = transform_to_img(img)
+        img = img.cpu().numpy()
+        lm = lm.to('cpu').numpy()
+        lm = (lm + 0.5) * np.array([bb_w, bb_h]) # convert to image pixel coordinates
+        lm = lm + np.array([startX -5, startY - 5])
+        img = annotate_original_image(new_img, lm)
+        images_to_save.append( torchvision.transforms.ToTensor()(img) )
+
+    return torch.stack(images_to_save)
+
+def annotate_original_image(image: Image, landmarks: np.ndarray) -> Image:
+        draw = ImageDraw.Draw(image)
+        for i in range(landmarks.shape[0]):
+            draw.ellipse((landmarks[i, 0] - 1, landmarks[i, 1] - 1,
+                          landmarks[i, 0] + 1, landmarks[i, 1] + 1), fill=(255, 255, 0))
+        return image
 if __name__ == "__main__":
     main()
