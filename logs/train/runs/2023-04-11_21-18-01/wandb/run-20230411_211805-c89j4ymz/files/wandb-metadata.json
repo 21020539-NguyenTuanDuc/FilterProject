@@ -1,0 +1,56 @@
+{
+    "os": "Windows-10-10.0.19044-SP0",
+    "python": "3.9.12",
+    "heartbeatAt": "2023-04-11T14:18:07.400796",
+    "startedAt": "2023-04-11T14:18:05.665161",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "trainer=gpu",
+        "data.num_workers=4",
+        "trainer.devices=1",
+        "ckpt_path=checkpoints/last.ckpt",
+        "trainer.max_epochs=100",
+        "logger=wandb"
+    ],
+    "state": "running",
+    "program": "-m src.train",
+    "git": {
+        "remote": "https://github.com/ducnt1210/FilterProject.git",
+        "commit": "6de17d1015c3479b4d3a4e22a77f21bdcd2d7083"
+    },
+    "email": "tducabcd@gmail.com",
+    "root": "D:/AI/datasets/FilterProject",
+    "host": "DESKTOP-EJLM0F8",
+    "username": "Duc",
+    "executable": "D:\\Python\\python.exe",
+    "cpu_count": 2,
+    "cpu_count_logical": 4,
+    "cpu_freq": {
+        "current": 3700.0,
+        "min": 0.0,
+        "max": 3700.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3700.0,
+            "min": 0.0,
+            "max": 3700.0
+        }
+    ],
+    "disk": {
+        "total": 398.15624618530273,
+        "used": 80.41012954711914
+    },
+    "gpu": "NVIDIA GeForce GTX 980",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce GTX 980",
+            "memory_total": 4294967296
+        }
+    ],
+    "memory": {
+        "total": 15.941703796386719
+    }
+}

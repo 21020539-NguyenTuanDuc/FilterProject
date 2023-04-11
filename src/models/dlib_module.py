@@ -36,6 +36,8 @@ class DlibLitModule(LightningModule):
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
+        self.output_path = "/outputs"
+
         self.save_hyperparameters(logger=False, ignore=['net'])
 
         self.net = net

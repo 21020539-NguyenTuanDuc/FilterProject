@@ -1,0 +1,6 @@
+- trainer=gpu
+- data.num_workers=4
+- trainer.devices=1
+- ckpt_path=checkpoints/last.ckpt
+- trainer.max_epochs=100
+- logger=wandb
