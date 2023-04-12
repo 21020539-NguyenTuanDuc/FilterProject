@@ -155,7 +155,7 @@ hydra:
     - path: ''
       schema: structured
       provider: schema
-    output_dir: D:\AI\datasets\FilterProject\logs\eval\runs\2023-04-12_09-34-03
+    output_dir: D:\AI\datasets\FilterProject\logs\eval\runs\2023-04-12_11-22-31
     choices:
       hydra: default.yaml
       extras: default.yaml

@@ -87,8 +87,8 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     # for predictions use trainer.predict(...)
     log.info("Starting predictions!")
 
-    # annotated_image = eval_image(model=model, image_path='testImage/test.png')
     annotated_image = eval_image(model=model, image_path='testImage/test.png')
+    # annotated_image = eval_image(model=model, image_path='D:\AI\datasets\FilterProject/testImage/test.jpg')
     torchvision.utils.save_image(annotated_image, "testImage/test_predict.png")
     return metric_dict, object_dict
 
