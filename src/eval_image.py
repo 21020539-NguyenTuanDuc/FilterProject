@@ -13,6 +13,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 import torchvision
 import numpy as np
 from src.data.dlib_datamodule import DlibDataset
+import cv2;
 
 import torchvision
 
@@ -97,9 +98,52 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
 def main(cfg: DictConfig) -> None:
     evaluate(cfg)
 
+def eval_video(video_path, model):
+    cap = cv2.VideoCapture(video_path)
+    face_detector = cv2.dnn.readNetFromCaffe("BBDetection\deploy.prototxt.txt"
+                                             , "BBDetection/res10_300x300_ssd_iter_140000.caffemodel")
+    frames = []
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        frames.append(frame)
+    
+    (h, w) = frame[0].shape[:2]
+
+    startX, startY, endX, endY = [], [], [], []
+    for frame in frames:
+        blob = cv2.dnn.blobFromImage(frame, 1.0)
+        face_detector.setInput(blob)
+        detections = face_detector.forward()
+        tempStartX, tempStartY, tempEndX, tempEndY = 0, 0, 0, 0
+        max_confidence = -1
+        for i in range(0, detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+            max_confidence = max(max_confidence, confidence)
+
+            # Filter out weak detections
+            if confidence > 0.5 and confidence == max_confidence:
+                # Get the bounding box for the face
+                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                (tempStartX, tempStartY, tempEndX, tempEndY) = box.astype("int")
+                # cv2.rectangle(imgBB, (startX, startY), (endX, endY), (0, 0, 255), 2)
+        startX.append(tempStartX)
+        startY.append(tempStartY)
+        endX.append(tempEndX)
+        endY.append(tempEndY)
+        frame = frame[tempStartY-5:tempEndY+5, tempStartX-5:tempEndX+5]
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = Image.fromarray(frame)
+        frame = np.asarray(frame)
+        
+        
+
+
 def eval_image(image_path, model):
     # Make bounding box
-    import cv2;
     imgBB = cv2.imread(image_path)
     (h, w) = imgBB.shape[:2]
 
@@ -109,16 +153,17 @@ def eval_image(image_path, model):
     face_detector.setInput(blob)
     detections = face_detector.forward()
     startX, startY, endX, endY = 0, 0, 0, 0
+    max_confidence = -1
     for i in range(0, detections.shape[2]):
         confidence = detections[0, 0, i, 2]
+        max_confidence = max(max_confidence, confidence)
 
         # Filter out weak detections
-        if confidence > 0.5:
+        if confidence > 0.5 and confidence == max_confidence:
             # Get the bounding box for the face
             box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
             (startX, startY, endX, endY) = box.astype("int")
             # cv2.rectangle(imgBB, (startX, startY), (endX, endY), (0, 0, 255), 2)
-            break
 
     imgBB = imgBB[startY-5:endY+5, startX-5:endX+5] # crop image
     bb_h = endY - startY + 10
