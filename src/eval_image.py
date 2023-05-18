@@ -12,7 +12,8 @@ from albumentations import Compose
 from albumentations.pytorch.transforms import ToTensorV2
 import torchvision
 import numpy as np
-from src.data.dlib_datamodule import DlibDataset
+from src.models.dlib_module import DlibLitModule
+from src.models.components.simple_regnet import SimpleRegnet
 import cv2;
 
 import torchvision
@@ -90,57 +91,13 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
 
     annotated_image = eval_image(model=model, image_path='testImage/test.png')
     # annotated_image = eval_image(model=model, image_path='D:\AI\datasets\FilterProject/testImage/test.jpg')
-    torchvision.utils.save_image(annotated_image, "testImage/test_predict.png")
+    torchvision.utils.save_image(annotated_image, "testImage/temp_res.png")
     return metric_dict, object_dict
 
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="eval.yaml")
 def main(cfg: DictConfig) -> None:
     evaluate(cfg)
-
-def eval_video(video_path, model):
-    cap = cv2.VideoCapture(video_path)
-    face_detector = cv2.dnn.readNetFromCaffe("BBDetection\deploy.prototxt.txt"
-                                             , "BBDetection/res10_300x300_ssd_iter_140000.caffemodel")
-    frames = []
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        frames.append(frame)
-    
-    (h, w) = frame[0].shape[:2]
-
-    startX, startY, endX, endY = [], [], [], []
-    for frame in frames:
-        blob = cv2.dnn.blobFromImage(frame, 1.0)
-        face_detector.setInput(blob)
-        detections = face_detector.forward()
-        tempStartX, tempStartY, tempEndX, tempEndY = 0, 0, 0, 0
-        max_confidence = -1
-        for i in range(0, detections.shape[2]):
-            confidence = detections[0, 0, i, 2]
-            max_confidence = max(max_confidence, confidence)
-
-            # Filter out weak detections
-            if confidence > 0.5 and confidence == max_confidence:
-                # Get the bounding box for the face
-                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-                (tempStartX, tempStartY, tempEndX, tempEndY) = box.astype("int")
-                # cv2.rectangle(imgBB, (startX, startY), (endX, endY), (0, 0, 255), 2)
-        startX.append(tempStartX)
-        startY.append(tempStartY)
-        endX.append(tempEndX)
-        endY.append(tempEndY)
-        frame = frame[tempStartY-5:tempEndY+5, tempStartX-5:tempEndX+5]
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = Image.fromarray(frame)
-        frame = np.asarray(frame)
-        
-        
-
 
 def eval_image(image_path, model):
     # Make bounding box
@@ -149,7 +106,7 @@ def eval_image(image_path, model):
 
     face_detector = cv2.dnn.readNetFromCaffe("BBDetection\deploy.prototxt.txt"
                                              , "BBDetection/res10_300x300_ssd_iter_140000.caffemodel")
-    blob = cv2.dnn.blobFromImage(imgBB, 1.0)
+    blob = cv2.dnn.blobFromImage(cv2.resize(imgBB, (300, 300)), 1.0, (300, 300))
     face_detector.setInput(blob)
     detections = face_detector.forward()
     startX, startY, endX, endY = 0, 0, 0, 0
@@ -159,19 +116,30 @@ def eval_image(image_path, model):
         max_confidence = max(max_confidence, confidence)
 
         # Filter out weak detections
-        if confidence > 0.5 and confidence == max_confidence:
+        if confidence > 0.3 and confidence == max_confidence:
             # Get the bounding box for the face
-            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-            (startX, startY, endX, endY) = box.astype("int")
+            box = detections[0, 0, i, 3:7] * np.array([300, 300, 300, 300])
+            (tempStartX, tempStartY, tempEndX, tempEndY) = box.astype("int")
+            if(tempStartX >= 0 and tempStartY >= 0 and tempEndY <= h and tempEndX <= w):
+                startX = int(1.0 * tempStartX * w / 300)
+                startY = int(1.0 * tempStartY * h /300)
+                endX = int(1.0 * tempEndX * w / 300)
+                endY = int(1.0 * tempEndY * h /300)
             # cv2.rectangle(imgBB, (startX, startY), (endX, endY), (0, 0, 255), 2)
 
-    imgBB = imgBB[startY-5:endY+5, startX-5:endX+5] # crop image
-    bb_h = endY - startY + 10
-    bb_w = endX - startX + 10
+    imgBB = imgBB[startY:endY, startX:endX] # crop image
+    bb_h = endY - startY
+    bb_w = endX - startX
     # cv2.imshow("Output", imgBB) #To run in Google Colab, comment out this line Colab notebook
     # #cv2_imshow(image) #To run in Google Colab, uncomment this line
     # cv2.waitKey(0)
-    color_converted_img = cv2.cvtColor(imgBB, cv2.COLOR_BGR2RGB)
+    if imgBB.size == 0:
+        print("Cropped error!")
+        print(f"(w, h) {(w, h)}, (startX, startY, endX, endY) {startX, startY, endX, endY}")
+        color_converted_img = cv2.cvtColor(imgBB, cv2.COLOR_BGR2RGB)
+    else:
+        print(f"(w, h) {(w, h)}, (startX, startY, endX, endY) {startX, startY, endX, endY}")
+        color_converted_img = cv2.cvtColor(imgBB, cv2.COLOR_BGR2RGB)
 
     transform = Compose([
         A.Resize(224, 224),
@@ -202,17 +170,17 @@ def annotate_original_tensor(image: torch.Tensor, landmarks: np.ndarray, startX:
         img = img.cpu().numpy()
         lm = lm.to('cpu').numpy()
         lm = (lm + 0.5) * np.array([bb_w, bb_h]) # convert to image pixel coordinates
-        lm = lm + np.array([startX -5, startY - 5])
+        lm = lm + np.array([startX, startY])
         img = annotate_original_image(new_img, lm)
         images_to_save.append( torchvision.transforms.ToTensor()(img) )
 
     return torch.stack(images_to_save)
 
 def annotate_original_image(image: Image, landmarks: np.ndarray) -> Image:
-        draw = ImageDraw.Draw(image)
-        for i in range(landmarks.shape[0]):
-            draw.ellipse((landmarks[i, 0] - 1, landmarks[i, 1] - 1,
-                          landmarks[i, 0] + 1, landmarks[i, 1] + 1), fill=(255, 255, 0))
-        return image
+    draw = ImageDraw.Draw(image)
+    for i in range(landmarks.shape[0]):
+        draw.ellipse((landmarks[i, 0] - 1, landmarks[i, 1] - 1,
+                        landmarks[i, 0] + 1, landmarks[i, 1] + 1), fill=(255, 255, 0))
+    return image
 if __name__ == "__main__":
     main()
