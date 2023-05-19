@@ -89,9 +89,9 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     # for predictions use trainer.predict(...)
     log.info("Starting predictions!")
 
-    annotated_image = eval_image(model=model, image_path='testImage/test.png')
+    annotated_image = eval_image(model=model, image_path='testImage/frame1.png')
     # annotated_image = eval_image(model=model, image_path='D:\AI\datasets\FilterProject/testImage/test.jpg')
-    torchvision.utils.save_image(annotated_image, "testImage/temp_res.png")
+    torchvision.utils.save_image(annotated_image, "testImage/frame1_res.png")
     return metric_dict, object_dict
 
 
@@ -125,8 +125,9 @@ def eval_image(image_path, model):
                 startY = int(1.0 * tempStartY * h /300)
                 endX = int(1.0 * tempEndX * w / 300)
                 endY = int(1.0 * tempEndY * h /300)
-            # cv2.rectangle(imgBB, (startX, startY), (endX, endY), (0, 0, 255), 2)
 
+    # cv2.rectangle(imgBB, (startX, startY), (endX, endY), (0, 0, 255), 2)
+    # cv2.imwrite("testImage/test_BB.png", imgBB)
     imgBB = imgBB[startY:endY, startX:endX] # crop image
     bb_h = endY - startY
     bb_w = endX - startX
@@ -178,9 +179,11 @@ def annotate_original_tensor(image: torch.Tensor, landmarks: np.ndarray, startX:
 
 def annotate_original_image(image: Image, landmarks: np.ndarray) -> Image:
     draw = ImageDraw.Draw(image)
+    width, height = image.size
+    draw_radius = int(1.0 * width/680)
     for i in range(landmarks.shape[0]):
-        draw.ellipse((landmarks[i, 0] - 1, landmarks[i, 1] - 1,
-                        landmarks[i, 0] + 1, landmarks[i, 1] + 1), fill=(255, 255, 0))
+        draw.ellipse((landmarks[i, 0] - draw_radius, landmarks[i, 1] - draw_radius,
+                        landmarks[i, 0] + draw_radius, landmarks[i, 1] + draw_radius), fill=(255, 255, 0))
     return image
 if __name__ == "__main__":
     main()

@@ -88,7 +88,7 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     # for predictions use trainer.predict(...)
     log.info("Starting predictions!")
 
-    eval_video(model=model, video_path='testVideo/testVideo.mp4')
+    eval_video(model=model, video_path='testVideo/testVideo2.mp4')
     # annotated_image = eval_image(model=model, image_path='D:\AI\datasets\FilterProject/testImage/test.jpg')
     return metric_dict, object_dict
 
@@ -102,15 +102,16 @@ def eval_video(video_path, model):
     fps = cap.get(cv2.CAP_PROP_FPS)
     frame_width = int(cap.get(3))
     frame_height = int(cap.get(4))
-    out = cv2.VideoWriter('testVideo/output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, (frame_width, frame_height))
+    out = cv2.VideoWriter('testVideo/output2.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, (frame_width, frame_height))
 
     while(cap.isOpened()):
         ret, frame = cap.read()
         if ret == True:
-            cv2.imwrite("testVideo/frame.png", frame)
-            annotated_frame = eval_image("testVideo/frame.png", model)
-            torchvision.utils.save_image(annotated_frame, "testVideo/annotated_frame.png")
-            new_frame = cv2.imread("testVideo/annotated_frame.png")
+            annotated_frame = eval_image(frame, model)
+            annotated_frame = annotated_frame.squeeze(0)
+            new_frame = annotated_frame.permute(1,2,0).numpy() * 255
+            new_frame = new_frame[:, :, ::-1]
+            new_frame = new_frame.astype(np.uint8)
             out.write(new_frame)
         else:
             break
@@ -122,7 +123,13 @@ def eval_video(video_path, model):
 
 def eval_image(image_path, model):
     # Make bounding box
-    imgBB = cv2.imread(image_path)
+    str_flag = 0
+    if(isinstance(image_path, str)):
+        imgBB = cv2.imread(image_path)
+        str_flag = 1
+    else:
+        imgBB = image_path
+        str_flag = 0
     (h, w) = imgBB.shape[:2]
 
     face_detector = cv2.dnn.readNetFromCaffe("BBDetection\deploy.prototxt.txt"
@@ -171,8 +178,12 @@ def eval_image(image_path, model):
         ToTensorV2(),])
     input_image = Image.fromarray(color_converted_img)
     input_image = np.asarray(input_image)
-    origin_input_tensor = transformB(image=np.array(Image.open(image_path).convert('RGB')))
-    origin_input_tensor = origin_input_tensor["image"].unsqueeze(0)
+    if(str_flag == 1):
+        origin_input_tensor = transformB(image=np.array(Image.open(image_path).convert('RGB')))
+        origin_input_tensor = origin_input_tensor["image"].unsqueeze(0)
+    else:
+        origin_input_tensor = transformB(image=np.array(Image.fromarray(cv2.cvtColor(image_path, cv2.COLOR_BGR2RGB)).convert('RGB')))
+        origin_input_tensor = origin_input_tensor["image"].unsqueeze(0)
     input_tensor = transform(image=input_image)
     input_tensor = input_tensor['image'].unsqueeze(0)
     with torch.no_grad():
@@ -199,9 +210,11 @@ def annotate_original_tensor(image: torch.Tensor, landmarks: np.ndarray, startX:
 
 def annotate_original_image(image: Image, landmarks: np.ndarray) -> Image:
     draw = ImageDraw.Draw(image)
+    width, height = image.size
+    draw_radius = int(1.0 * width/680)
     for i in range(landmarks.shape[0]):
-        draw.ellipse((landmarks[i, 0] - 1, landmarks[i, 1] - 1,
-                        landmarks[i, 0] + 1, landmarks[i, 1] + 1), fill=(255, 255, 0))
+        draw.ellipse((landmarks[i, 0] - draw_radius, landmarks[i, 1] - draw_radius,
+                        landmarks[i, 0] + draw_radius, landmarks[i, 1] + draw_radius), fill=(255, 255, 0))
     return image
 if __name__ == "__main__":
     main()
