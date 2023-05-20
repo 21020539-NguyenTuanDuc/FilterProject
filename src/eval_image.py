@@ -43,7 +43,7 @@ log = utils.get_pylogger(__name__)
 
 
 @utils.task_wrapper
-def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
+def evaluate(cfg: DictConfig):
     """Evaluates given checkpoint on a datamodule testset.
 
     This method is wrapped in optional @task_wrapper decorator which applies extra utilities
@@ -83,13 +83,13 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
         utils.log_hyperparameters(object_dict)
 
     log.info("Starting testing!")
-    trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
     metric_dict = trainer.callback_metrics
+    model = torch.load(cfg.ckpt_path)
 
     # for predictions use trainer.predict(...)
     log.info("Starting predictions!")
 
-    annotated_image = eval_image(model=model, image_path='testImage/frame1.png')
+    annotated_image = eval_image(model=model, image_path='testImage/image_0014.png')
     # annotated_image = eval_image(model=model, image_path='D:\AI\datasets\FilterProject/testImage/test.jpg')
     torchvision.utils.save_image(annotated_image, "testImage/frame1_res.png")
     return metric_dict, object_dict
