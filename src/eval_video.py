@@ -211,7 +211,7 @@ def annotate_original_tensor(image: torch.Tensor, landmarks: np.ndarray, startX:
 def annotate_original_image(image: Image, landmarks: np.ndarray) -> Image:
     draw = ImageDraw.Draw(image)
     width, height = image.size
-    draw_radius = int(1.0 * width/680)
+    draw_radius = max(1, int(1.0 * width/680))
     for i in range(landmarks.shape[0]):
         draw.ellipse((landmarks[i, 0] - draw_radius, landmarks[i, 1] - draw_radius,
                         landmarks[i, 0] + draw_radius, landmarks[i, 1] + draw_radius), fill=(255, 255, 0))

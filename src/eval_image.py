@@ -89,9 +89,10 @@ def evaluate(cfg: DictConfig):
     # for predictions use trainer.predict(...)
     log.info("Starting predictions!")
 
-    annotated_image = eval_image(model=model, image_path='testImage/image_0014.png')
-    # annotated_image = eval_image(model=model, image_path='D:\AI\datasets\FilterProject/testImage/test.jpg')
-    torchvision.utils.save_image(annotated_image, "testImage/frame1_res.png")
+    # annotated_image = eval_image(model=model, image_path='FilterImage/StoneMask.png')
+    # torchvision.utils.save_image(annotated_image, "FilterImage/StoneMaskPoints.png")
+    annotated_image = eval_image(model=model, image_path='testImage/yawnTest.jpg')
+    torchvision.utils.save_image(annotated_image, "testImage/yawnTest_res.png")
     return metric_dict, object_dict
 
 
@@ -101,7 +102,7 @@ def main(cfg: DictConfig) -> None:
 
 def eval_image(image_path, model):
     # Make bounding box
-    imgBB = cv2.imread(image_path)
+    imgBB = cv2.imread(image_path, cv2.IMREAD_COLOR)
     (h, w) = imgBB.shape[:2]
 
     face_detector = cv2.dnn.readNetFromCaffe("BBDetection\deploy.prototxt.txt"
@@ -116,7 +117,7 @@ def eval_image(image_path, model):
         max_confidence = max(max_confidence, confidence)
 
         # Filter out weak detections
-        if confidence > 0.3 and confidence == max_confidence:
+        if confidence > 0.1 and confidence == max_confidence:
             # Get the bounding box for the face
             box = detections[0, 0, i, 3:7] * np.array([300, 300, 300, 300])
             (tempStartX, tempStartY, tempEndX, tempEndY) = box.astype("int")
@@ -128,9 +129,13 @@ def eval_image(image_path, model):
 
     # cv2.rectangle(imgBB, (startX, startY), (endX, endY), (0, 0, 255), 2)
     # cv2.imwrite("testImage/test_BB.png", imgBB)
+
     imgBB = imgBB[startY:endY, startX:endX] # crop image
     bb_h = endY - startY
     bb_w = endX - startX
+    # bb_w = w
+    # bb_h = h
+
     # cv2.imshow("Output", imgBB) #To run in Google Colab, comment out this line Colab notebook
     # #cv2_imshow(image) #To run in Google Colab, uncomment this line
     # cv2.waitKey(0)
@@ -180,7 +185,7 @@ def annotate_original_tensor(image: torch.Tensor, landmarks: np.ndarray, startX:
 def annotate_original_image(image: Image, landmarks: np.ndarray) -> Image:
     draw = ImageDraw.Draw(image)
     width, height = image.size
-    draw_radius = int(1.0 * width/680)
+    draw_radius = max(1, int(1.0 * width/680))
     for i in range(landmarks.shape[0]):
         draw.ellipse((landmarks[i, 0] - draw_radius, landmarks[i, 1] - draw_radius,
                         landmarks[i, 0] + draw_radius, landmarks[i, 1] + draw_radius), fill=(255, 255, 0))
