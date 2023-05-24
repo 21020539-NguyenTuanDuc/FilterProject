@@ -1,4 +1,0 @@
-- trainer=gpu
-- data.num_workers=4
-- trainer.devices=1
-- ckpt_path=checkpoints/regnet_checkpoint.pth
