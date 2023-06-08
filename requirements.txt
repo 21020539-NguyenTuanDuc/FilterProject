@@ -42,7 +42,7 @@ psutil==5.9.5
 Pygments==2.15.1
 pyrootutils==1.0.4
 python-dotenv==1.0.0
-pytorch-lightning==1.9.2
+pytorch-lightning==2.0.3
 PyWavelets==1.4.1
 PyYAML==6.0
 qudida==0.0.4
