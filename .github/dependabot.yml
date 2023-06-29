@@ -9,6 +9,7 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
+    open-pull-requests-limit: 0
     ignore:
       - dependency-name: "pytorch-lightning"
         update-types: ["version-update:semver-patch"]
